@@ -1,4 +1,5 @@
 use crate::docker_service::{DockerService, ServiceStatus};
+use crate::shared::Response;
 use anyhow::{Result, Context, anyhow};
 use colored::*;
 use std::collections::HashMap;
@@ -6,6 +7,7 @@ use std::path::PathBuf;
 use tokio::time::{sleep, Duration};
 use walkdir::WalkDir;
 
+#[derive(Clone)]
 pub struct ServiceManager {
     cloudhub_path: PathBuf,
     services: HashMap<String, DockerService>,
@@ -89,14 +91,14 @@ impl ServiceManager {
         Ok(())
     }
 
-    pub async fn start_services(&self, service_names: Vec<String>, build: bool) -> Result<()> {
+    pub async fn start_services(&self, service_names: Vec<String>, build: bool) -> Result<Vec<Response>> {
         let services_to_start = self.resolve_services(service_names)?;
+        let mut results = Vec::new();
         
         for service_name in services_to_start {
-            let service = self.services.get(&service_name).unwrap();
-            println!("🚀 Starting service: {}", service_name.cyan().bold());
-            
+            let service = self.services.get(&service_name).unwrap();            
             let mut cmd = self.create_compose_command();
+
             cmd.arg("-f")
                .arg(&service.compose_file)
                .current_dir(&service.path);
@@ -111,14 +113,16 @@ impl ServiceManager {
                 .context(format!("Failed to start service: {}", service_name))?;
 
             if output.status.success() {
-                println!("  {} Service {} started successfully", "✅".green(), service_name.cyan());
+                // println!("  {} Service {} started successfully", "✅".green(), service_name.cyan());
+                results.push(Response::Success(format!("Service {} started successfully", service_name)));
             } else {
                 let error = String::from_utf8_lossy(&output.stderr);
-                println!("  {} Failed to start service {}: {}", "❌".red(), service_name.cyan(), error.red());
+                results.push(Response::Error(format!("Failed to start service {}: {}", service_name, error)));
+                // println!("  {} Failed to start service {}: {}", "❌".red(), service_name.cyan(), error.red());
             }
         }
 
-        Ok(())
+        Ok(results)
     }
 
     pub async fn stop_services(&self, service_names: Vec<String>, remove_volumes: bool) -> Result<()> {
@@ -210,8 +214,9 @@ impl ServiceManager {
         Ok(())
     }
 
-    pub async fn show_status(&self, service_names: Vec<String>) -> Result<()> {
+    pub async fn show_status(&self, service_names: Vec<String>) -> Result<String> {
         let services_to_check = self.resolve_services(service_names)?;
+        let mut results = Vec::new();
         
         for service_name in services_to_check {
             let mut service = self.services.get(&service_name)
@@ -219,10 +224,10 @@ impl ServiceManager {
                 .clone();
             
             service.update_status().await?;
-            println!("📊 {} - {}", service_name.cyan().bold(), service.status);
+            results.push(format!("{} - {}", service_name, service.status));
         }
 
-        Ok(())
+        Ok(results.join("\n"))
     }
 
     pub async fn watch_status(&self, service_names: Vec<String>) -> Result<()> {
