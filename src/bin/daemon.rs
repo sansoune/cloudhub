@@ -2,6 +2,8 @@ use anyhow::Result;
 use tokio::net::UnixListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use std::path::Path;
+use cloudhub::shared::{Command, Response};
+use serde_json::Result as JsonResult;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -16,22 +18,39 @@ async fn main() -> Result<()> {
 
     loop {
         let (mut socket, _) = listener.accept().await?;
-        let mut buffer = [0; 1024];
+        tokio::spawn(async move {
+            let mut buf = [0u8; 4096];
+            if let Ok(n) = socket.read(&mut buf).await {
+                if n == 0 {
+                    return;
+                }
+                let cmd: JsonResult<Command> = serde_json::from_slice(&buf[..n]);
+                let response = match cmd {
+                    Ok(Command::Status) => {
+                        Response::Success("Service status is OK".to_string())
+                    },
+                    Ok(Command::Up { services }) => {
+                        Response::Success(format!("Started services: {:?}", services))
+                    },
+                    Ok(Command::Down { services }) => {
+                        Response::Success(format!("Stopped services: {:?}", services))
+                    },
+                    Ok(Command::Restart { services }) => {
+                        Response::Success(format!("Restarted services: {:?}", services))
+                    },
+                    Ok(Command::List { verbose }) => {
+                        if verbose {
+                            Response::Success("List of all services with details".to_string())
+                        } else {
+                            Response::Success("List of all services".to_string())
+                        }
+                    },
+                    Err(e) => Response::Error(format!("Failed to parse command: {}", e)),
+                };
 
-        match socket.read(&mut buffer).await {
-            Ok(0) => break, // Connection closed
-            Ok(n) => {
-                let request = String::from_utf8_lossy(&buffer[..n]);
-                println!("Received request: {}", request);
-
-                // Here you would handle the request and send a response
-                let response = "Response from daemon";
-                socket.write_all(response.as_bytes()).await?;
+                let resp_bytes = serde_json::to_vec(&response).expect("Failed to serialize response");
+                let _ = socket.write_all(&resp_bytes).await;
             }
-            Err(e) => {
-                eprintln!("Failed to read from socket: {}", e);
-            }
-        }
+        });
     }
-    Ok(())
 }
