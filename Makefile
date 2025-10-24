@@ -1,6 +1,6 @@
 BINARY_NAME=cloudhub
 BINARY_PATH=dist/$(BINARY_NAME)
-MAIN_PATH=cloudhub/src/cmd/main.go
+MAIN_PATH=cmd/main.go
 GO=go
 GOFLAGS=-v
 
