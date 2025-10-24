@@ -1,22 +1,24 @@
 BINARY_NAME=cloudhub
 BINARY_PATH=dist/$(BINARY_NAME)
-MAIN_PATH=cloudhub/cmd/main.go
+MAIN_PATH=cloudhub/src/cmd/main.go
 GO=go
 GOFLAGS=-v
+
+ARGS ?=
 
 .PHONY: all build run clean
 
 all: clean build
 
 build:
-	@echo "building $(BINARY_NAME)
+	@echo "building $(BINARY_NAME)"
 	@mkdir -p dist
 	$(GO) build $(GOFLAGS) -o $(BINARY_PATH) $(MAIN_PATH)
 	@echo "✅ Build complete: $(BINARY_PATH)"
 
 run: build
 	@echo "Running $(BINARY_NAME)..."
-	@./$(BINARY_PATH)
+	@./$(BINARY_PATH) $(ARGS)
 
 
 clean:
