@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 )
 
@@ -34,6 +35,16 @@ func (c *Client) Ping() error {
 	}
 	return nil
 }
+
+// get docker version
+func (c *Client) GetVersion() (types.Version, error) {
+	v, err := c.cli.ServerVersion(c.ctx)
+	if err != nil {
+		return types.Version{}, fmt.Errorf("can't get docker version: %w", err)
+	}
+	return v, nil
+}
+	
 
 // close client connection
 func (c *Client) Close() error {

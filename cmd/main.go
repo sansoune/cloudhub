@@ -9,7 +9,7 @@ import (
 
 func main()  {
 	fmt.Println("🏠 Cloudhub - Docker Monitor")
-	fmt.Println("Attempting to connect to Docker...\n")
+	fmt.Println("─────────────────────────────────────\n")
 
 	client, err := docker.NewClient()
 
@@ -31,4 +31,20 @@ func main()  {
 	}
 
 	fmt.Println("✅ Docker is responding!")
+
+	//getting docker version
+	fmt.Println("\n📦 Docker Information:")
+	ver, err := client.GetVersion()
+	if err != nil {
+		fmt.Printf("❌ failed to get docker version: %v\n", err)
+		return
+	}
+
+	fmt.Println("─────────────────────────────────────")
+	fmt.Printf("Version:        %s\n", ver.Version)
+	fmt.Printf("API Version:    %s\n", ver.APIVersion)
+	fmt.Printf("OS/Arch:        %s/%s\n", ver.Os, ver.Arch)
+	fmt.Printf("Build Time:     %s\n", ver.BuildTime)
+	fmt.Printf("Git Commit:     %s\n", ver.GitCommit)
+	fmt.Println("─────────────────────────────────────")
 }
