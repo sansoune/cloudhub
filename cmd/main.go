@@ -2,12 +2,15 @@ package main
 
 import (
 	"fmt"
-	// "os"
+	"os"
 
 	"cloudhub/internal/docker"
 )
 
-func main()  {
+func main() {
+
+	args := os.Args
+
 	fmt.Println("🏠 Cloudhub - Docker Monitor")
 	fmt.Println("─────────────────────────────────────\n")
 
@@ -33,18 +36,21 @@ func main()  {
 	fmt.Println("✅ Docker is responding!")
 
 	//getting docker version
-	fmt.Println("\n📦 Docker Information:")
-	ver, err := client.GetVersion()
-	if err != nil {
-		fmt.Printf("❌ failed to get docker version: %v\n", err)
-		return
-	}
+	if len(args) > 1 && args[1] == "version" {
 
-	fmt.Println("─────────────────────────────────────")
-	fmt.Printf("Version:        %s\n", ver.Version)
-	fmt.Printf("API Version:    %s\n", ver.APIVersion)
-	fmt.Printf("OS/Arch:        %s/%s\n", ver.Os, ver.Arch)
-	fmt.Printf("Build Time:     %s\n", ver.BuildTime)
-	fmt.Printf("Git Commit:     %s\n", ver.GitCommit)
-	fmt.Println("─────────────────────────────────────")
+		fmt.Println("\n📦 Docker Information:")
+		ver, err := client.GetVersion()
+		if err != nil {
+			fmt.Printf("❌ failed to get docker version: %v\n", err)
+			return
+		}
+
+		fmt.Println("─────────────────────────────────────")
+		fmt.Printf("Version:        %s\n", ver.Version)
+		fmt.Printf("API Version:    %s\n", ver.APIVersion)
+		fmt.Printf("OS/Arch:        %s/%s\n", ver.Os, ver.Arch)
+		fmt.Printf("Build Time:     %s\n", ver.BuildTime)
+		fmt.Printf("Git Commit:     %s\n", ver.GitCommit)
+		fmt.Println("─────────────────────────────────────")
+	}
 }
