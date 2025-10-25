@@ -54,8 +54,8 @@ func (c *Client) GetVersion() (types.Version, error) {
 }
 
 // list container
-func (c *Client) ListContainers() ([]Container, error) {
-	containers, err := c.cli.ContainerList(c.ctx, container.ListOptions{All: true})
+func (c *Client) ListContainers(all bool) ([]Container, error) {
+	containers, err := c.cli.ContainerList(c.ctx, container.ListOptions{All: all})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list containers: %w", err)
 	}
