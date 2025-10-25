@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/docker/docker/client"
@@ -8,6 +9,7 @@ import (
 
 type Client struct {
 	cli *client.Client
+	ctx context.Context
 }
 
 // creating a new docker client
@@ -19,11 +21,21 @@ func NewClient() (*Client, error) {
 
 	return &Client{
 		cli: cli,
+		ctx: context.Background(),
 	}, nil
 
 }
 
-//close client connection
+// Ping: checks if docker daemon responds
+func (c *Client) Ping() error {
+	_, err := c.cli.Ping(c.ctx)
+	if err != nil {
+		return fmt.Errorf("docker daemon not responding: %w", err)
+	}
+	return nil
+}
+
+// close client connection
 func (c *Client) Close() error {
 	return c.cli.Close()
 }

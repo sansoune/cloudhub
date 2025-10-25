@@ -21,4 +21,14 @@ func main()  {
 	defer client.Close()
 
 	fmt.Println("✅ Successfully connected to Docker!")
+
+	//pinging docker
+	fmt.Println("Pinging docker daemon...")
+	err = client.Ping()
+	if err != nil {
+		fmt.Printf("❌ Ping failed: %v\n", err)
+		return
+	}
+
+	fmt.Println("✅ Docker is responding!")
 }
