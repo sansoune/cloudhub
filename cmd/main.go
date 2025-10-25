@@ -53,4 +53,24 @@ func main() {
 		fmt.Printf("Git Commit:     %s\n", ver.GitCommit)
 		fmt.Println("─────────────────────────────────────")
 	}
+
+	if len(args) > 1 && args[1] == "ls" {
+		fmt.Println("📦 Containers:")
+
+		containers, err := client.ListContainers()
+		if err != nil {
+			fmt.Printf("❌ Error: %v\n", err)
+			return
+		}
+
+		if len(containers) == 0 {
+			fmt.Println("   No containers running")
+			return
+		}
+
+		for i, c := range containers {
+			fmt.Printf("   %d. %s (%s)\n", i+1, c.Name, c.ID)
+		}
+		fmt.Printf("\nTotal: %d containers\n", len(containers))
+	}
 }

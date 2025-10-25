@@ -5,12 +5,18 @@ import (
 	"fmt"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 )
 
 type Client struct {
 	cli *client.Client
 	ctx context.Context
+}
+
+type Container struct {
+	ID   string
+	Name string
 }
 
 // creating a new docker client
@@ -44,7 +50,29 @@ func (c *Client) GetVersion() (types.Version, error) {
 	}
 	return v, nil
 }
-	
+
+// list container
+func (c *Client) ListContainers() ([]Container, error) {
+	containers, err := c.cli.ContainerList(c.ctx, container.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list containers: %w", err)
+	}
+
+	var result []Container
+	for _, ctr := range containers {
+		name := "unknown"
+		if len(ctr.Names) > 0 {
+			name = ctr.Names[0][1:]
+		}
+
+		result = append(result, Container{
+			ID:   ctr.ID[:12],
+			Name: name,
+		})
+	}
+
+	return result, nil
+}
 
 // close client connection
 func (c *Client) Close() error {
