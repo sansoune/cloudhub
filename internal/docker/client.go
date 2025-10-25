@@ -17,6 +17,8 @@ type Client struct {
 type Container struct {
 	ID   string
 	Name string
+	Status string
+	State string
 }
 
 // creating a new docker client
@@ -53,7 +55,7 @@ func (c *Client) GetVersion() (types.Version, error) {
 
 // list container
 func (c *Client) ListContainers() ([]Container, error) {
-	containers, err := c.cli.ContainerList(c.ctx, container.ListOptions{})
+	containers, err := c.cli.ContainerList(c.ctx, container.ListOptions{All: true})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list containers: %w", err)
 	}
@@ -68,6 +70,8 @@ func (c *Client) ListContainers() ([]Container, error) {
 		result = append(result, Container{
 			ID:   ctr.ID[:12],
 			Name: name,
+			Status: ctr.Status,
+			State: ctr.State,
 		})
 	}
 

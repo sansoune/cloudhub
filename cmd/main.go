@@ -57,6 +57,9 @@ func main() {
 	if len(args) > 1 && args[1] == "ls" {
 		fmt.Println("📦 Containers:")
 
+		fmt.Printf("%-20s %-12s %-20s %s\n", "NAME", "STATE", "STATUS", "ID")
+		fmt.Println("────────────────────────────────────────────────────────────────────")
+
 		containers, err := client.ListContainers()
 		if err != nil {
 			fmt.Printf("❌ Error: %v\n", err)
@@ -68,8 +71,8 @@ func main() {
 			return
 		}
 
-		for i, c := range containers {
-			fmt.Printf("   %d. %s (%s)\n", i+1, c.Name, c.ID)
+		for _, c := range containers {
+			fmt.Printf("%-20s %-12s %-20s %s\n", c.Name, c.State, c.Status, c.ID)
 		}
 		fmt.Printf("\nTotal: %d containers\n", len(containers))
 	}
