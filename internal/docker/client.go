@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -94,6 +95,24 @@ func (c *Client) StartConatiner(nameOrId string) error {
 	return nil
 
 
+}
+
+// Stop a container
+func (c *Client) StopContainer(nameOrId string) error {
+	ctr, err := c.GetContainer(nameOrId)
+	if err != nil {
+	return err 
+	}
+
+	timeout := 10
+	err = c.cli.ContainerStop(c.ctx, ctr.ID, container.StopOptions{
+		Timeout: &timeout,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to stop container: %w", err)
+	}
+
+	return nil
 }
 
 // getting a specific container
