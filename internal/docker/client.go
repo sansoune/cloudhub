@@ -78,6 +78,39 @@ func (c *Client) ListContainers(all bool) ([]Container, error) {
 	return result, nil
 }
 
+// Start a container
+func (c *Client) StartConatiner(nameOrId string) error {
+	ctr, err := c.GetContainer(nameOrId)
+	if err != nil {
+		return err
+	}
+
+	err = c.cli.ContainerStart(c.ctx, ctr.ID, container.StartOptions{})
+
+	if err != nil {
+		return fmt.Errorf("failed to start container: %w", err)
+	}
+
+	return nil
+
+
+}
+
+// getting a specific container
+func (c *Client) GetContainer(nameOrID string) (*Container, error) {
+	containers, err := c.ListContainers(true)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ctr := range containers {
+		if ctr.Name == nameOrID || ctr.ID == nameOrID || strings.HasPrefix(ctr.ID, nameOrID) {
+			return &ctr, nil
+		}
+	}
+return nil, fmt.Errorf("container '%s' not found", nameOrID)
+}
+
 // close client connection
 func (c *Client) Close() error {
 	return c.cli.Close()
