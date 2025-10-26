@@ -115,6 +115,24 @@ func (c *Client) StopContainer(nameOrId string) error {
 	return nil
 }
 
+// restart function
+func (c *Client) RestartContainer(nameOrID string) error {
+	ctr, err := c.GetContainer(nameOrID)
+	if err != nil {
+		return err
+	}
+
+	timeout := 10
+	err = c.cli.ContainerRestart(c.ctx, ctr.ID, container.StopOptions{
+		Timeout: &timeout,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to restart container: %w", err)
+	}
+
+	return nil
+}
+
 // getting a specific container
 func (c *Client) GetContainer(nameOrID string) (*Container, error) {
 	containers, err := c.ListContainers(true)
