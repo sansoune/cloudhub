@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"cloudhub/internal/docker"
-	"cloudhub/internal/compose"
 	"github.com/spf13/cobra"
 )
 
@@ -45,19 +44,11 @@ var lsPausedCmd = &cobra.Command{
 	},
 }
 
-var lsStacksCmd = &cobra.Command{
-	Use: "stacks",
-	Short: "List Docker Compose stacks under specified dir",
-	Run: func(cmd *cobra.Command, args []string) {
-		listStacks()
-	},
-}
 
 func init() {
 	lsCmd.AddCommand(lsRunningCmd)
 	lsCmd.AddCommand(lsStoppedCmd)
 	lsCmd.AddCommand(lsPausedCmd)
-	lsCmd.AddCommand(lsStacksCmd)
 
 	rootCmd.AddCommand(lsCmd)
 }
@@ -108,24 +99,4 @@ func listContainers(state string) {
 	fmt.Printf("\nTotal: %d containers\n", len(containers))
 }
 
-func listStacks() {
-	stacks, err := compose.FindStacks()
-	if err != nil {
-		fmt.Println("❌ Error: %v\n", err)
-		return
-	}
 
-	if len(stacks) == 0 {
-		fmt.Println("No stacks found")
-		return
-	}
-
-	fmt.Printf("\n%-20s %s\n", "STACK NAME", "PATH")
-	fmt.Println("────────────────────────────────────────────────────────────────────")
-
-	for _, stack := range stacks {
-		fmt.Printf("%-20s %s\n", stack.Name, stack.Path)
-	}
-
-	fmt.Printf("\nTotal: %d stacks\n", len(stacks))
-}
