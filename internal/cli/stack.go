@@ -37,9 +37,27 @@ var stackUpCmd = &cobra.Command{
 	},
 }
 
+var stackDownCmd = &cobra.Command{
+	Use: "down <stack>",
+	Short: "Stop a stack",
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		stackName := args[0]
+
+		stack, err := compose.GetStack(stackName)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Starting stack '%s'...\n", stack.Name)
+		return stack.Down()
+	},
+}
+
 func init() {
 	stackCmd.AddCommand(lsStack)
 	stackCmd.AddCommand(stackUpCmd)
+	stackCmd.AddCommand(stackDownCmd)
 
 	rootCmd.AddCommand(stackCmd)
 }
