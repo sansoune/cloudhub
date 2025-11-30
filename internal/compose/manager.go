@@ -3,6 +3,7 @@ package compose
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
@@ -61,3 +62,35 @@ func GetStack(name string) (*Stack, error) {
 	return nil, fmt.Errorf("stack '%s' not found", name)
 }
 
+
+// running compose command with args under the dedicated dir
+func (s *Stack) runComposeCommand(args ...string) error {
+
+	cmdArgs := append([]string{"compose"}, args...)
+
+	cmd := exec.Command("docker", cmdArgs...)
+	cmd.Dir = s.Path
+
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		return fmt.Errorf("docker compose error: %v\nOutput:\n%s", err, string(output))
+	}
+
+	return nil
+}
+
+func (s *Stack) Up() error {
+	return s.runComposeCommand("up", "-d")
+}
+
+func (s *Stack) Down() error {
+	return s.runComposeCommand("down")
+}
+
+func (s *Stack) Restart() error {
+	if err := s.runComposeCommand("down"); err != nil {
+		return err
+	}
+	return s.runComposeCommand("up", "-d")
+}
