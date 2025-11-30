@@ -14,6 +14,11 @@ var lsCmd = &cobra.Command{
 	Short: "List containers",
 	Long:  `List all Docker containers.`,
 	Run: func(cmd *cobra.Command, args []string) {
+
+		if len(args) > 0 && args[0] == "stacks" {
+			listStacks()
+			return
+		}
 		listContainers("") // List all containers
 	},
 }
@@ -40,12 +45,7 @@ var lsStoppedCmd = &cobra.Command{
 var lsPausedCmd = &cobra.Command{
 	Use:   "paused",
 	Short: "List paused containers",
-	Run: func(cmd *cobra.Command, args []string) {
-
-		if len(args) > 0 && args[0] == "stacks" {
-			listStacks()
-			return
-		}
+	Run: func(cmd *cobra.Command, args []string) {	
 		listContainers("paused")
 	},
 }
