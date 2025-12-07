@@ -36,7 +36,11 @@ func runDaemon() {
 	fmt.Println("starting daemon...")
 	
 	interval := time.Duration(daemonInterval) * time.Second
-	monitor := daemon.NewMonitor(interval)
+	monitor, err := daemon.NewMonitor(interval)
+	if err != nil {
+		fmt.Printf("Failed to create monitor: %v\n", err)
+		os.Exit(1)
+	}
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
