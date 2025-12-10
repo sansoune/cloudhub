@@ -49,7 +49,7 @@ var stackDownCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Starting stack '%s'...\n", stack.Name)
+		fmt.Printf("Stopping stack '%s'...\n", stack.Name)
 		return stack.Down()
 	},
 }
@@ -66,7 +66,7 @@ var stackRestartCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Starting stack '%s'...\n", stack.Name)
+		fmt.Printf("Restarting stack '%s'...\n", stack.Name)
 		return stack.Restart()
 	},
 }
