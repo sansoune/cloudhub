@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"cloudhub/internal/docker"
+	"cloudhub/internal/notify"
 	"fmt"
 	"time"
 )
@@ -11,9 +12,10 @@ type Monitor struct {
 	stopChan chan struct{}
 	client *docker.Client
 	previousState map[string]string
+	notifiers []notify.Notifier
 }
 
-func NewMonitor(interval time.Duration) (*Monitor, error) {
+func NewMonitor(interval time.Duration, notifiers []notify.Notifier) (*Monitor, error) {
 	client, err := docker.NewClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client: %w", err)
@@ -25,6 +27,7 @@ func NewMonitor(interval time.Duration) (*Monitor, error) {
 		stopChan: make(chan struct{}),
 		client: client,
 		previousState: make(map[string]string),
+		notifiers: notifiers,
 	}, nil
 }
 
@@ -82,25 +85,41 @@ func (m *Monitor) detectChanges(currentState map[string]string) {
 	for name, currentStatus := range currentState {
 		previousStatus, existed := m.previousState[name]
 		if !existed {
-			fmt.Printf("NEW: Container '%s' appeared (%s)\n", name, currentStatus)
+			msg := fmt.Sprintf("NEW: Container '%s' appeared (%s)\n", name, currentStatus)
+			fmt.Println(msg)
+			m.SendNotification(msg)
 		} else if previousStatus != currentStatus {
 			// State changed
 			if previousStatus == "running" && currentStatus == "exited" {
-				fmt.Printf("ALERT: Container '%s' stopped (running → exited)\n", name)
+				msg := fmt.Sprintf("ALERT: Container '%s' stopped (running → exited)\n", name)
+				fmt.Println(msg)
+				m.SendNotification(msg)
 			} else if previousStatus == "exited" && currentStatus == "running" {
-				fmt.Printf("RECOVERED: Container '%s' started (exited → running)\n", name)
+				msg := fmt.Sprintf("RECOVERED: Container '%s' started (exited → running)\n", name)
+				fmt.Println(msg)
+				m.SendNotification(msg)
 			} else {
-				fmt.Printf("CHANGE: Container '%s' changed state: %s → %s\n", name, previousStatus, currentStatus)
+				msg := fmt.Sprintf("CHANGE: Container '%s' changed state: %s → %s\n", name, previousStatus, currentStatus)
+				fmt.Println(msg)
+				m.SendNotification(msg)
 			}
 		}
 	}
 
 	for name, previousStatus := range m.previousState {
 		if _, exists := currentState[name]; !exists {
-			fmt.Printf("DISAPPEARED: Container '%s' is gone (was: %s)\n", name, previousStatus)
+			msg := fmt.Sprintf("DISAPPEARED: Container '%s' is gone (was: %s)\n", name, previousStatus)
+			fmt.Println(msg)
+			m.SendNotification(msg)
 		}
 	}
 }
 
 		
-
+func (m *Monitor) SendNotification(message string) {
+	for _, notifier := range m.notifiers {
+		if err := notifier.Send(message); err != nil {
+			fmt.Printf("Failed to send notification: %v\n", err)
+		}
+	}
+}

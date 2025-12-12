@@ -1,16 +1,22 @@
 package cli
 
 import (
+	"cloudhub/internal/daemon"
+	"cloudhub/internal/notify"
 	"fmt"
-	"time"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+
 	"github.com/spf13/cobra"
-	"cloudhub/internal/daemon"
 )
 
-var daemonInterval int
+var (
+	daemonInterval int
+	ntfyServer string
+	ntfyTopic string
+)
 
 var daemonCmd = &cobra.Command{
 	Use: "daemon",
@@ -27,6 +33,8 @@ var daemonRunCmd = &cobra.Command{
 
 func init() {
 	daemonRunCmd.Flags().IntVar(&daemonInterval, "interval", 10, "Tick interval in seconds")
+	daemonRunCmd.Flags().StringVar(&ntfyServer, "ntfy-server", "https://ntfy.dakhlaoui.tn", "Ntfy server URL")
+	daemonRunCmd.Flags().StringVar(&ntfyTopic, "ntfy-topic", "cloudhub", "Ntfy topic name")
 	
 	daemonCmd.AddCommand(daemonRunCmd)
 	rootCmd.AddCommand(daemonCmd)
@@ -34,9 +42,17 @@ func init() {
 
 func runDaemon() {
 	fmt.Println("starting daemon...")
+
+	var notifiers []notify.Notifier
+
+	if ntfyTopic != "" {
+		fmt.Printf("ntfy notification enabled (topic: %s)\n", ntfyTopic)
+		ntfyNotifier :=  notify.NewNtfyNotifier(ntfyServer, ntfyTopic)
+		notifiers = append(notifiers, ntfyNotifier)
+	}
 	
 	interval := time.Duration(daemonInterval) * time.Second
-	monitor, err := daemon.NewMonitor(interval)
+	monitor, err := daemon.NewMonitor(interval, notifiers)
 	if err != nil {
 		fmt.Printf("Failed to create monitor: %v\n", err)
 		os.Exit(1)
