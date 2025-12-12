@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
-// "path/filepath"
+  "path/filepath"
 
 // "gopkg.in/yaml.v3"
 )
@@ -39,8 +39,13 @@ func GetConfigPath() (string, error) {
 		return "error working dir", err
 	}
 
-	fmt.Println("Current Working Directory:", dir)
+	cfgPath := filepath.Join(dir, "config.yaml")
+	fmt.Println("Current Working Directory:", cfgPath)
 
-	return dir, nil
+	if _, err := os.Stat(cfgPath); err == nil {
+		return cfgPath, nil
+	}
+
+	return "", nil
 }
 			
