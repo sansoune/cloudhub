@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cloudhub/internal/config"
 	"cloudhub/internal/daemon"
 	"cloudhub/internal/notify"
 	"fmt"
@@ -42,6 +43,8 @@ func init() {
 
 func runDaemon() {
 	fmt.Println("starting daemon...")
+
+	_, err := config.Load()
 
 	var notifiers []notify.Notifier
 
