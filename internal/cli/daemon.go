@@ -33,7 +33,7 @@ var daemonRunCmd = &cobra.Command{
 }
 
 func init() {
-	daemonRunCmd.Flags().IntVar(&daemonInterval, "interval", 10, "Tick interval in seconds")
+	daemonRunCmd.Flags().IntVar(&daemonInterval, "interval", 0, "Tick interval in seconds")
 	daemonRunCmd.Flags().StringVar(&ntfyServer, "ntfy-server", "https://ntfy.dakhlaoui.tn", "Ntfy server URL")
 	daemonRunCmd.Flags().StringVar(&ntfyTopic, "ntfy-topic", "cloudhub", "Ntfy topic name")
 	
@@ -51,10 +51,13 @@ func runDaemon() {
 
 	} else {
 		fmt.Println("Config loaded from file")
-		fmt.Println(cfg)
 	}
 
-	_ = cfg
+	intervalDuration := cfg.Daemon.Interval
+	if daemonInterval > 0 {
+		intervalDuration = daemonInterval
+		fmt.Printf("Overriding interval from flag: %d seconds\n", intervalDuration)
+	}
 
 	var notifiers []notify.Notifier
 
@@ -64,7 +67,7 @@ func runDaemon() {
 		notifiers = append(notifiers, ntfyNotifier)
 	}
 	
-	interval := time.Duration(daemonInterval) * time.Second
+	interval := time.Duration(intervalDuration) * time.Second
 	monitor, err := daemon.NewMonitor(interval, notifiers)
 	if err != nil {
 		fmt.Printf("Failed to create monitor: %v\n", err)
