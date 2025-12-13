@@ -37,13 +37,28 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	cfg := DefaultConfig()
+	if len(data) == 0 {
+		return cfg, nil
+	}
+
+
+	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	return &cfg, nil
+	cfg.ApplyDefaults()
+
+	return cfg, nil
 }
+
+func (cfg *Config) ApplyDefaults() {
+	if cfg.Daemon.Interval == 0 {
+		cfg.Daemon.Interval = 60
+	}
+}
+
+
 
 func DefaultConfig() *Config {
 	cfg := &Config{}

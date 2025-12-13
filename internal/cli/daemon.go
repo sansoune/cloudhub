@@ -44,7 +44,17 @@ func init() {
 func runDaemon() {
 	fmt.Println("starting daemon...")
 
-	_, err := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Printf("Config file not found, using defaults: %v\n", err)
+		cfg = config.DefaultConfig()
+
+	} else {
+		fmt.Println("Config loaded from file")
+		fmt.Println(cfg)
+	}
+
+	_ = cfg
 
 	var notifiers []notify.Notifier
 
