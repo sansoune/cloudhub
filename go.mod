@@ -2,7 +2,10 @@ module cloudhub
 
 go 1.24.2
 
-require github.com/docker/docker v28.5.1+incompatible
+require (
+	github.com/docker/docker v28.5.1+incompatible
+	gopkg.in/yaml.v3 v3.0.1
+)
 
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
