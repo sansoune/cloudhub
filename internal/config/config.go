@@ -45,6 +45,15 @@ func Load() (*Config, error) {
 	return &cfg, nil
 }
 
+func DefaultConfig() *Config {
+	cfg := &Config{}
+	cfg.Daemon.Interval = 60
+	cfg.Notifications.Ntfy.Enabled = false
+	cfg.Notifications.Ntfy.Server = ""
+	cfg.Notifications.Ntfy.Topic = ""
+	return cfg
+}
+
 func GetConfigPath() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
