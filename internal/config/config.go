@@ -76,7 +76,6 @@ func GetConfigPath() (string, error) {
 	}
 
 	cfgPath := filepath.Join(dir, "config.yaml")
-	fmt.Println("Current Working Directory:", cfgPath)
 
 	if _, err := os.Stat(cfgPath); err == nil {
 		return cfgPath, nil
