@@ -1,34 +1,32 @@
 # Cloudhub
 
-**Cloudhub** is a lightweight CLI tool for monitoring and managing Docker containers and Docker‑Compose stacks in a homelab environment. It provides commands to list, start, stop, and restart containers, manage stacks, and run a daemon that continuously watches container state changes and sends notifications via **ntfy**.
+**Cloudhub** is a lightweight CLI tool for monitoring and managing Docker containers in a homelab environment. It provides commands to list, start, stop, and restart containers, manage Docker‑Compose stacks, and run a daemon that continuously watches container state changes and sends optional notifications via **ntfy**.
 
 ---
 
 ## Table of Contents
-
-- [Project Overview](#project-overview)  
-- [Core Architecture](#core-architecture)  
-- [How the Code Works](#how-the-code-works)  
-- [Implemented Features](#implemented-features)  
-- [Installation & Build](#installation--build)  
-- [Configuration](#configuration)  
-- [CLI Usage & Endpoints](#cli-usage--endpoints)  
-- [Development Guide](#development-guide)  
-- [Roadmap](#roadmap)  
-- [License](#license)  
+1. [Project Overview](#project-overview)  
+2. [Core Architecture](#core-architecture)  
+3. [How the Code Works](#how-the-code-works)  
+4. [Implemented Features](#implemented-features)  
+5. [Installation](#installation)  
+6. [Configuration](#configuration)  
+7. [CLI Commands (API Endpoints)](#cli-commands)  
+8. [Development Guide](#development-guide)  
+9. [Roadmap](#roadmap)  
+10. [License](#license)  
 
 ---
 
 ## Project Overview
+Cloudhub is a **command‑line** application written in Go that interacts with the Docker daemon through the official Docker SDK. Its primary responsibilities are:
 
-Cloudhub is a **command‑line** utility that interacts with the Docker Engine API to:
+* Querying Docker for container information.
+* Controlling container lifecycle (start, stop, restart).
+* Managing Docker‑Compose “stacks” located under a fixed directory (`/opt/cloudhub`).
+* Running a background daemon that periodically checks container states and emits notifications when containers appear, disappear, or change state.
 
-1. **Inspect containers** – list all containers or filter by state (running, exited, paused).  
-2. **Control containers** – start, stop, or restart a container by name or ID.  
-3. **Manage Docker‑Compose stacks** – discover stacks under a predefined directory (`/opt/cloudhub`) and run `up`, `down`, or `restart` on them.  
-4. **Run a daemon** – periodically poll container states, detect changes (new, stopped, started, disappeared, or any state transition) and push human‑readable notifications to an **ntfy** server.
-
-All functionality is encapsulated in a set of internal packages (`cli`, `docker`, `compose`, `daemon`, `notify`) and exposed through a **Cobra**‑based CLI.
+The tool is intended for homelab operators who want a simple, scriptable interface without a full‑blown UI.
 
 ---
 
@@ -36,55 +34,57 @@ All functionality is encapsulated in a set of internal packages (`cli`, `docker`
 
 ```
 cloudhub/
-├─ cmd/
-│   └─ main.go                # entry point – invokes CLI
-├─ internal/
-│   ├─ cli/                   # Cobra commands & flag handling
-│   │   ├─ root.go            # root command definition
-│   │   ├─ ls.go              # list containers (all / running / stopped / paused)
-│   │   ├─ start.go           # start a container
-│   │   ├─ stop.go            # stop a container
-│   │   ├─ restart.go         # restart a container
-│   │   ├─ version.go         # Docker daemon version info
-│   │   ├─ stack.go           # stack discovery & compose actions (ls, up, down, restart)
-│   │   └─ daemon.go          # daemon sub‑command (run)
-│   ├─ docker/                # thin wrapper around Docker SDK
-│   │   └─ client.go          # client creation, Ping, Version, List, Start/Stop/Restart, etc.
-│   ├─ compose/               # stack discovery & docker‑compose execution
-│   │   └─ manager.go         # FindStacks, GetStack, Up/Down/Restart helpers
-│   ├─ daemon/                # monitoring loop that polls containers and sends notifications
-│   │   └─ monitor.go
-│   └─ notify/                # notifier abstraction
-│       └─ notifier.go        # Ntfy implementation (HTTP POST)
-├─ Makefile                   # build/run/clean helpers
-└─ go.mod / go.sum            # module definition
+├── cmd/
+│   └── main.go                # Application entry point
+├── internal/
+│   ├── cli/                   # Cobra based CLI commands
+│   │   ├── root.go
+│   │   ├── ls.go
+│   │   ├── start.go
+│   │   ├── stop.go
+│   │   ├── restart.go
+│   │   ├── version.go
+│   │   ├── daemon.go
+│   │   └── stack.go
+│   ├── config/                # YAML configuration loading
+│   │   └── config.go
+│   ├── daemon/                # Monitoring daemon implementation
+│   │   └── monitor.go
+│   ├── docker/                # Thin wrapper around Docker SDK
+│   │   └── client.go
+│   ├── notify/                # Notification abstraction (ntfy)
+│   │   └── notifier.go
+│   └── compose/               # Docker‑Compose stack management
+│       └── manager.go
+├── Makefile                   # Build/run helpers
+└── go.mod / go.sum
 ```
 
-### Package Responsibilities
-
-| Package | Responsibility |
-|---------|-----------------|
-| `cli`   | Parse user input, expose sub‑commands (`ls`, `start`, `stop`, `restart`, `stack`, `daemon`, `version`). |
-| `docker`| Direct Docker Engine interaction (list containers, control lifecycle, fetch version). |
-| `compose`| Locate Docker‑Compose stacks under `/opt/cloudhub` and invoke `docker compose` commands in the stack directory. |
-| `daemon`| Periodic container state snapshot, diff detection, and dispatch of notifications. |
-| `notify`| Define a generic `Notifier` interface; provide an `NtfyNotifier` that posts plain‑text messages to an ntfy server. |
+* **CLI (`internal/cli`)** – defines the command hierarchy using Cobra, parses flags, and calls the service layer.
+* **Docker client (`internal/docker`)** – encapsulates Docker SDK calls (list, start, stop, restart, version, ping).
+* **Compose manager (`internal/compose`)** – discovers stacks under `/opt/cloudhub` and runs `docker compose` commands in the stack directory.
+* **Configuration (`internal/config`)** – loads `config.yaml` from the current working directory, applies defaults (e.g., daemon interval = 60 s).
+* **Daemon (`internal/daemon`)** – runs a ticker loop, compares current container states with the previous snapshot, and triggers notifications on changes.
+* **Notifier (`internal/notify`)** – defines a `Notifier` interface; the only concrete implementation is `NtfyNotifier`, which POSTs plain‑text messages to an ntfy server.
 
 ---
 
 ## How the Code Works
 
-1. **Program start** – `cmd/main.go` calls `cli.Execute()`.  
-2. **Cobra** builds the command tree (`rootCmd` → sub‑commands). Flags for the daemon (`--interval`, `--ntfy-server`, `--ntfy-topic`) are registered in `daemon.go`.  
-3. **Container commands** (`ls`, `start`, `stop`, `restart`) create a Docker client (`docker.NewClient()`), perform the requested operation, and close the client.  
-4. **Stack commands** (`stack ls`, `stack up/down/restart`) use `compose.FindStacks()` to discover directories containing a `docker-compose.yml`. The selected stack runs `docker compose` with the appropriate arguments (`up -d`, `down`, etc.) via `exec.Command`.  
-5. **Daemon** (`cloudhub daemon run`)  
-   * Builds a slice of `notify.Notifier` based on CLI flags (currently only ntfy).  
-   * Instantiates a `daemon.Monitor` with the polling interval and notifiers.  
-   * Starts a ticker loop that calls `Monitor.checkContainers()` every interval.  
-   * `checkContainers` fetches the current container list, builds a map of `name → state`, and invokes `detectChanges` to compare with the previous snapshot.  
-   * Detected events (new, stopped, started, state change, disappeared) are printed to stdout and forwarded to each notifier via `Notifier.Send`.  
-   * Graceful shutdown is handled via OS signals (`SIGINT`, `SIGTERM`).  
+1. **Program start** – `cmd/main.go` calls `cli.Execute()`.
+2. **Cobra parses the command line** and dispatches to the appropriate sub‑command implementation.
+3. **Configuration loading** (daemon only)  
+   * `config.Load()` reads `config.yaml` (if present) and falls back to `config.DefaultConfig()`.  
+   * CLI flags (`--interval`, `--ntfy-server`, `--ntfy-topic`) can override config values.
+4. **Docker interactions** – each CLI command creates a `docker.NewClient()`, performs the requested operation, prints human‑readable output, and closes the client.
+5. **Stack management** – `compose.FindStacks()` scans `/opt/cloudhub` for directories containing a `docker-compose.yml`. `stack up/down/restart` invoke `docker compose` with the appropriate arguments inside the stack’s directory.
+6. **Daemon flow** (`cloudhub daemon run`)  
+   * Builds a `daemon.Monitor` with the chosen interval and any configured notifiers.  
+   * Starts a ticker; on each tick it calls `monitor.checkContainers()`.  
+   * `checkContainers` fetches the full container list, builds a map of `name → state`, and calls `detectChanges` to compare with the previous snapshot.  
+   * Detected events (new, disappeared, state changes) are printed and sent to each notifier (`NtfyNotifier` if enabled).  
+   * The daemon runs until it receives an OS interrupt (`SIGINT`/`SIGTERM`), at which point `monitor.Stop()` is called.
+7. **Notification** – `notify.NewNtfyNotifier(server, topic)` creates a notifier that POSTs the message to `http://<server>/<topic>` with `Content-Type: text/plain`. Errors are logged to stdout.
 
 ---
 
@@ -92,29 +92,27 @@ cloudhub/
 
 | Feature | CLI Command | Description |
 |---------|-------------|-------------|
-| **List containers** | `cloudhub ls` (all) <br> `cloudhub ls running` <br> `cloudhub ls stopped` <br> `cloudhub ls paused` | Shows a table with `NAME`, `STATE`, `STATUS`, `ID`. |
-| **Start container** | `cloudhub start <container>` | Starts a stopped container (by name or ID). |
-| **Stop container** | `cloudhub stop <container>` | Stops a running container (by name or ID). |
-| **Restart container** | `cloudhub restart <container>` | Restarts a container (by name or ID). |
-| **Docker version** | `cloudhub version` | Prints Docker daemon version details. |
-| **Stack discovery** | `cloudhub stack ls` | Lists stacks (directories with `docker-compose.yml`) under `/opt/cloudhub`. |
-| **Stack up** | `cloudhub stack up <stack>` | Executes `docker compose up -d` in the stack directory. |
-| **Stack down** | `cloudhub stack down <stack>` | Executes `docker compose down`. |
-| **Stack restart** | `cloudhub stack restart <stack>` | Runs `down` then `up -d`. |
-| **Daemon monitoring** | `cloudhub daemon run` | Periodically polls containers, detects state changes, and sends notifications. |
-| **Ntfy notifications** | `--ntfy-server`, `--ntfy-topic` flags on daemon | Sends plain‑text messages to `<server>/<topic>` via HTTP POST. |
+| List containers | `cloudhub ls` (and sub‑commands `running`, `stopped`, `paused`) | Shows name, state, status, and short ID in a table. |
+| Start container | `cloudhub start <container>` | Starts a stopped container by name or ID. |
+| Stop container | `cloudhub stop <container>` | Stops a running container gracefully (10 s timeout). |
+| Restart container | `cloudhub restart <container>` | Restarts a container (stop → start). |
+| Docker version | `cloudhub version` | Prints Docker daemon version information. |
+| Stack discovery | `cloudhub stack ls` | Lists stacks (directories with `docker-compose.yml`) under `/opt/cloudhub`. |
+| Stack lifecycle | `cloudhub stack up|down|restart <stack>` | Executes `docker compose up -d`, `down`, or a full restart for the specified stack. |
+| Daemon monitoring | `cloudhub daemon run` | Periodically polls container states, detects changes, and optionally sends ntfy notifications. |
+| Configurable interval & ntfy | Flags `--interval`, `--ntfy-server`, `--ntfy-topic` (daemon) | Override config values at runtime. |
+| Notification via ntfy | `notify.NtfyNotifier` | Sends plain‑text messages to an ntfy server/topic. |
 
 ---
 
-## Installation & Build
+## Installation
 
 ### Prerequisites
+* Go 1.22+ (or any recent version that satisfies the `go.mod` constraints)
+* Docker daemon reachable from the host where Cloudhub runs
+* (Optional) An ntfy server if you want notifications
 
-* Go 1.22+ (module aware)  
-* Docker Engine (client must be able to connect to the Docker socket)  
-* (Optional) `docker compose` command available in `$PATH` for stack management.  
-
-### Build
+### Build & Run
 
 ```bash
 # Clone the repository
@@ -123,143 +121,98 @@ cd cloudhub
 
 # Build the binary (output: dist/cloudhub)
 make build
+
+# Run the binary (example)
+./dist/cloudhub version
 ```
 
-### Run
+The provided `Makefile` also offers a convenient `make run` target:
 
 ```bash
-# Execute the binary directly
-./dist/cloudhub <command> [flags]
-
-# Example: list all containers
-./dist/cloudhub ls
-```
-
-You can also use `make run ARGS="ls"` to build and run in one step.
-
-### Clean
-
-```bash
-make clean
+make run ARGS="daemon run --interval 30"
 ```
 
 ---
 
 ## Configuration
 
-| Source | Setting | Default | Description |
-|--------|---------|---------|-------------|
-| **Flag** | `--interval` (int) | `10` seconds | Polling interval for the daemon. |
-| **Flag** | `--ntfy-server` (string) | `https://ntfy.dakhlaoui.tn` | Base URL of the ntfy server. |
-| **Flag** | `--ntfy-topic` (string) | `cloudhub` | Topic name used when posting notifications. |
-| **Environment** | Docker client uses standard Docker environment variables (`DOCKER_HOST`, `DOCKER_TLS_VERIFY`, etc.) as handled by `github.com/docker/docker/client`. | – | No additional env vars are required by Cloudhub itself. |
+Cloudhub reads a YAML file named `config.yaml` from the **current working directory**. If the file does not exist, defaults are used.
 
-> **Note:** The daemon only creates an ntfy notifier when a non‑empty `--ntfy-topic` is supplied. If omitted, the daemon runs silently (no external notifications).
+### Default configuration (`config.DefaultConfig()`)
+
+```yaml
+daemon:
+  interval: 60   # seconds between daemon checks
+
+notifications:
+  ntfy:
+    enabled: false
+    server: ""    # e.g., "https://ntfy.sh"
+    topic: ""     # e.g., "cloudhub"
+```
+
+### Overriding via CLI flags (daemon only)
+
+| Flag | Description |
+|------|-------------|
+| `--interval <seconds>` | Override the daemon tick interval. |
+| `--ntfy-server <url>` | Set the ntfy server URL and implicitly enable ntfy notifications. |
+| `--ntfy-topic <topic>` | Set the ntfy topic name and implicitly enable ntfy notifications. |
+
+If a flag is supplied, it takes precedence over the value from `config.yaml`.
 
 ---
 
-## CLI Usage & Endpoints
+## CLI Commands (API Endpoints)
 
-Cloudhub is a **CLI tool**, not an HTTP server, so there are no REST endpoints. Below is a quick reference of available commands.
+Cloudhub is a **CLI**, not a network service. The public interface consists of the following commands:
 
-### Root
+| Command | Usage | Description |
+|---------|-------|-------------|
+| `cloudhub ls [type]` | `cloudhub ls` <br> `cloudhub ls running` <br> `cloudhub ls stopped` <br> `cloudhub ls paused` | List containers (all or filtered by state). |
+| `cloudhub start <container>` | `cloudhub start my_container` | Start a stopped container. |
+| `cloudhub stop <container>` | `cloudhub stop my_container` | Stop a running container. |
+| `cloudhub restart <container>` | `cloudhub restart my_container` | Restart a container. |
+| `cloudhub version` | – | Show Docker daemon version information. |
+| `cloudhub stack ls` | – | List discovered Docker‑Compose stacks. |
+| `cloudhub stack up <stack>` | – | Run `docker compose up -d` for the stack. |
+| `cloudhub stack down <stack>` | – | Run `docker compose down` for the stack. |
+| `cloudhub stack restart <stack>` | – | Restart the stack (`down` then `up`). |
+| `cloudhub daemon run` | `cloudhub daemon run [flags]` | Start the monitoring daemon (supports `--interval`, `--ntfy-server`, `--ntfy-topic`). |
 
-```bash
-cloudhub               # shows help with available sub‑commands
-```
-
-### Container Management
-
-| Command | Syntax | Example |
-|---------|--------|---------|
-| List all containers | `cloudhub ls` | `cloudhub ls` |
-| List running containers | `cloudhub ls running` | `cloudhub ls running` |
-| List stopped containers | `cloudhub ls stopped` | `cloudhub ls stopped` |
-| List paused containers | `cloudhub ls paused` | `cloudhub ls paused` |
-| Start a container | `cloudhub start <name|id>` | `cloudhub start my-web` |
-| Stop a container | `cloudhub stop <name|id>` | `cloudhub stop my-db` |
-| Restart a container | `cloudhub restart <name|id>` | `cloudhub restart my-proxy` |
-| Show Docker version | `cloudhub version` | `cloudhub version` |
-
-### Stack Management
-
-| Command | Syntax | Example |
-|---------|--------|---------|
-| List stacks | `cloudhub stack ls` | `cloudhub stack ls` |
-| Bring a stack up | `cloudhub stack up <stack>` | `cloudhub stack up homeassistant` |
-| Bring a stack down | `cloudhub stack down <stack>` | `cloudhub stack down homeassistant` |
-| Restart a stack | `cloudhub stack restart <stack>` | `cloudhub stack restart homeassistant` |
-
-> Stacks are discovered under **`/opt/cloudhub`**. Each sub‑directory that contains a `docker-compose.yml` file is considered a stack.
-
-### Daemon
-
-```bash
-cloudhub daemon run [--interval <seconds>] [--ntfy-server <url>] [--ntfy-topic <topic>]
-```
-
-*Runs continuously, printing state changes and optionally posting them to ntfy.*
-
-**Example with notifications:**
-
-```bash
-cloudhub daemon run --interval 30 --ntfy-server https://ntfy.sh --ntfy-topic myhomelab
-```
-
-The daemon can be stopped gracefully with `Ctrl+C` (SIGINT) or by sending `SIGTERM`.
+All commands output human‑readable status messages and exit with a non‑zero code on error.
 
 ---
 
 ## Development Guide
 
 ### Repository Layout
+* **`cmd/`** – entry point (`main.go`).
+* **`internal/`** – private packages (CLI, Docker wrapper, daemon, config, notification, compose).
+* **`Makefile`** – common build/run/clean targets.
 
-```
-cmd/                # entry point (main)
-internal/
-  cli/              # Cobra commands
-  docker/           # Docker SDK wrapper
-  compose/          # Stack discovery & compose execution
-  daemon/           # Monitoring loop
-  notify/           # Notifier abstraction (ntfy)
-Makefile            # build/run/clean shortcuts
-go.mod / go.sum    # module definition
-```
-
-### Adding a New Command
-
-1. Create a new file under `internal/cli/` (e.g., `mycmd.go`).  
-2. Define a `*cobra.Command` and implement its `Run`/`RunE`.  
-3. Register the command in `init()` with `rootCmd.AddCommand(myCmd)`.  
-4. Use the existing `docker.NewClient()` or other internal packages as needed.
-
-### Adding a New Notifier
-
-1. Implement the `notify.Notifier` interface (`Send(message string) error`).  
-2. Add a constructor (e.g., `NewSlackNotifier`).  
-3. Extend `daemon.go` to instantiate the new notifier based on additional flags or env vars.
-
-### Testing
-
-*The repository currently does not contain test files.*  
-When adding new functionality, consider writing unit tests for:
-
-* Docker client wrappers (use the Docker SDK mock or a test daemon).  
-* Stack discovery (`compose.FindStacks`).  
-* Monitor change detection (`daemon.detectChanges`).  
-
-Run tests with:
-
+### Building locally
 ```bash
-go test ./...
+go test ./...          # (no tests currently, but run to verify build)
+make build
 ```
 
-### Linting & Formatting
+### Adding a new CLI command
+1. Create a new file under `internal/cli/` with a `cobra.Command`.
+2. Register the command in `init()` by calling `rootCmd.AddCommand(yourCmd)`.
+3. Use the existing Docker client (`docker.NewClient()`) or other internal services as needed.
 
-```bash
-go fmt ./...
-go vet ./...
-```
+### Extending notifications
+* Implement a new type that satisfies `notify.Notifier` (method `Send(message string) error`).
+* Add a constructor (e.g., `NewSlackNotifier`) and expose configuration flags if required.
+* Append the new notifier to the `notifiers` slice in `runDaemon()` based on configuration.
+
+### Contributing
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feat/your-feature`).
+3. Write code and, where applicable, add unit tests.
+4. Run `go vet ./...` and `golint` (if used) to keep code quality.
+5. Submit a Pull Request with a clear description of the change.
 
 ---
 
@@ -267,19 +220,16 @@ go vet ./...
 
 | Milestone | Description |
 |-----------|-------------|
-| **Improved error handling & logging** | Replace `fmt.Printf` with a structured logger (e.g., `zap` or `logrus`). |
-| **Additional notifier back‑ends** | Add Slack, Discord, or email notifiers behind the `notify.Notifier` interface. |
-| **Config file support** | Allow a YAML/JSON config file to specify default daemon interval, ntfy settings, and stacks directory. |
-| **Test coverage** | Introduce unit and integration tests for all core packages. |
-| **Cross‑platform stack discovery** | Make the default stacks directory configurable via flag or env var. |
-| **Docker‑Compose v2 compatibility** | Detect and use `docker compose` vs `docker-compose` binaries automatically. |
+| **v0.2 – Additional Notifiers** | Add support for Slack, Discord, or email notifications alongside ntfy. |
+| **v0.3 – Configurable Stacks Directory** | Allow the stacks root (`/opt/cloudhub`) to be overridden via config or flag. |
+| **v0.4 – Unit & Integration Tests** | Introduce a test suite covering Docker client wrapper, daemon logic, and CLI commands (using mocks). |
+| **v0.5 – Cross‑Platform Support** | Ensure the tool works on Windows (adjust Docker client initialization and path handling). |
+| **v0.6 – Export Metrics** | Provide Prometheus metrics endpoint for the daemon (container state counts, errors, etc.). |
 
-Contributions that address any of the above items are welcome!
+The above items are derived from existing `TODO`‑style gaps (e.g., only one notifier implementation, hard‑coded stacks directory, lack of tests).
 
 ---
 
 ## License
 
-This project is licensed under the **MIT License**.
-
----
+This project is licensed under the **MIT License**. See the `LICENSE` file for details.
