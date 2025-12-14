@@ -9,6 +9,8 @@ import (
 )
 
 type Config struct {
+	StackPath string `yaml:"stack_path"`
+
 	Daemon struct {
 		Interval int `yaml:"interval"`
 	} `yaml:"daemon"`
@@ -53,6 +55,10 @@ func Load() (*Config, error) {
 }
 
 func (cfg *Config) ApplyDefaults() {
+	if cfg.StackPath == "" {
+		cfg.StackPath = "/opt/stack"
+	}
+
 	if cfg.Daemon.Interval == 0 {
 		cfg.Daemon.Interval = 60
 	}
@@ -62,6 +68,7 @@ func (cfg *Config) ApplyDefaults() {
 
 func DefaultConfig() *Config {
 	cfg := &Config{}
+	cfg.StackPath = "/opt/stack"
 	cfg.Daemon.Interval = 60
 	cfg.Notifications.Ntfy.Enabled = false
 	cfg.Notifications.Ntfy.Server = ""

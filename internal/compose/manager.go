@@ -7,11 +7,15 @@ import (
 	"path/filepath"
 )
 
-const defaultStacksDir = "/opt/cloudhub"
+var defaultStacksDir = "/opt/stack"
 
 type Stack struct {
 	Name string
 	Path string
+}
+
+func SetStackDir(path string) {
+	defaultStacksDir = path
 }
 
 func FindStacks() ([]Stack, error) {

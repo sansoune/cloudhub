@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"cloudhub/internal/compose"
+	"cloudhub/internal/config"
+
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +27,7 @@ var stackUpCmd = &cobra.Command{
 	Short: "Start a stack",
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		loadStackPath()
 		stackName := args[0]
 
 		stack, err := compose.GetStack(stackName)
@@ -42,6 +45,7 @@ var stackDownCmd = &cobra.Command{
 	Short: "Stop a stack",
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		loadStackPath()
 		stackName := args[0]
 
 		stack, err := compose.GetStack(stackName)
@@ -59,6 +63,7 @@ var stackRestartCmd = &cobra.Command{
 	Short: "Restart a stack",
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		loadStackPath()
 		stackName := args[0]
 
 		stack, err := compose.GetStack(stackName)
@@ -81,9 +86,10 @@ func init() {
 }
 
 func listStacks() {
+	loadStackPath()
 	stacks, err := compose.FindStacks()
 	if err != nil {
-		fmt.Println("❌ Error: %v\n", err)
+		fmt.Printf("Error: %v\n", err)
 		return
 	}
 
@@ -102,4 +108,11 @@ func listStacks() {
 	fmt.Printf("\nTotal: %d stacks\n", len(stacks))
 }
 
+func loadStackPath() {
+	cfg, err := config.Load()
+	if err != nil {
+		return
+	}
 
+	compose.SetStackDir(cfg.StackPath)
+}
