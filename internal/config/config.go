@@ -85,4 +85,12 @@ func GetConfigPath() (string, error) {
 	return filepath.Join(home, ".config", "cloudhub", "config.yaml"), nil
 }
 
-			
+func CreateConfigDir() error {
+	configPath, err := GetConfigPath()
+	if err != nil {
+		return err
+	}
+
+	configDir := filepath.Dir(configPath)
+	return os.MkdirAll(configDir, 0755)
+}
