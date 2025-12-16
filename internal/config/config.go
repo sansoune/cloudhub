@@ -77,17 +77,12 @@ func DefaultConfig() *Config {
 }
 
 func GetConfigPath() (string, error) {
-	dir, err := os.Getwd()
+	home, err := os.UserHomeDir()
 	if err != nil {
-		return "error working dir", err
+		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	cfgPath := filepath.Join(dir, "config.yaml")
-
-	if _, err := os.Stat(cfgPath); err == nil {
-		return cfgPath, nil
-	}
-
-	return "", nil
+	return filepath.Join(home, ".config", "cloudhub", "config.yaml"), nil
 }
+
 			
