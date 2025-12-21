@@ -1,68 +1,71 @@
 # Cloudhub
-Cloudhub is a CLI tool for monitoring and managing Docker containers in your homelab.
+Docker homelab monitor tool
+================================
 
 ## Project Overview
-Cloudhub is designed to provide a simple and efficient way to manage Docker containers. It includes features such as listing containers, starting and stopping containers, restarting containers, and displaying Docker version information. Additionally, Cloudhub includes a daemon that can be installed as a systemd service to monitor containers and send notifications when changes are detected.
+Cloudhub is a CLI tool for monitoring and managing Docker containers in your homelab. It provides features such as listing containers, starting and stopping containers, restarting containers, and managing stacks.
 
 ## Core Architecture
-The Cloudhub project is organized into several packages:
+The project is structured into the following packages:
 
-* `internal/cli`: This package contains the command-line interface for Cloudhub, including the main entry point and all the subcommands.
-* `internal/compose`: This package provides functionality for working with Docker Compose stacks.
-* `internal/config`: This package is responsible for loading and storing configuration data.
-* `internal/daemon`: This package contains the implementation of the Cloudhub daemon, which monitors containers and sends notifications.
-* `internal/docker`: This package provides a client for interacting with the Docker API.
-* `internal/notify`: This package defines the interface for notifiers, which are used to send notifications when changes are detected.
+* `cmd`: contains the main entry point of the application
+* `internal/cli`: contains the CLI commands and their implementations
+* `internal/compose`: contains the stack management functionality
+* `internal/config`: contains the configuration management functionality
+* `internal/daemon`: contains the daemon functionality
+* `internal/docker`: contains the Docker client functionality
+* `internal/notify`: contains the notification functionality
 
 ## How the Code Works
-The main flow of the code is as follows:
+The main flow of the application is as follows:
 
-1. The `main` function in `cmd/main.go` calls the `Execute` function in `internal/cli/root.go`, which sets up the command-line interface and executes the selected subcommand.
-2. Each subcommand is implemented in a separate file in the `internal/cli` package, and they all follow a similar pattern:
-	* They define a `cobra.Command` struct to represent the subcommand.
-	* They implement the `Run` function for the subcommand, which performs the necessary actions.
-3. The `daemon` subcommand is special, as it sets up and runs the Cloudhub daemon. The daemon is implemented in the `internal/daemon` package, and it uses the `internal/docker` package to interact with the Docker API.
-4. The daemon monitors containers and sends notifications when changes are detected. It uses the `internal/notify` package to send notifications.
+1. The user runs the `cloudhub` command with a specific subcommand (e.g. `ls`, `start`, `stop`, etc.)
+2. The `cmd/main.go` file executes the corresponding CLI command
+3. The CLI command interacts with the Docker client to perform the desired action
+4. The Docker client communicates with the Docker daemon to perform the action
+5. The result of the action is returned to the user
 
 ## Implemented Features
-The following features are implemented in Cloudhub:
+The following features are implemented:
 
-* Listing containers: The `ls` subcommand lists all containers, and the `ls running`, `ls stopped`, and `ls paused` subcommands list containers in specific states.
-* Starting and stopping containers: The `start` and `stop` subcommands start and stop containers, respectively.
-* Restarting containers: The `restart` subcommand restarts a container.
-* Displaying Docker version information: The `version` subcommand displays version information about the Docker daemon.
-* Daemon: The `daemon` subcommand sets up and runs the Cloudhub daemon, which monitors containers and sends notifications when changes are detected.
-* Notifications: The daemon sends notifications when changes are detected, using the `internal/notify` package.
-* Stacks: The `stack` subcommand provides functionality for working with Docker Compose stacks, including listing stacks, starting and stopping stacks, and restarting stacks.
+* Listing containers: `cloudhub ls`
+* Starting a container: `cloudhub start <container>`
+* Stopping a container: `cloudhub stop <container>`
+* Restarting a container: `cloudhub restart <container>`
+* Managing stacks: `cloudhub stack <command>`
+* Daemon management: `cloudhub daemon <command>`
+* Notification support: `cloudhub daemon run` with notification flags
 
 ## Installation
-To install Cloudhub, you can use the following steps:
-
-1. Download the latest release from the GitHub repository.
-2. Extract the archive to a directory of your choice.
-3. Run the `install.sh` script to install Cloudhub to `/usr/local/bin/cloudhub`.
-4. Initialize the configuration by running `cloudhub config init`.
-5. Install the daemon by running `cloudhub daemon install`.
-
+To install Cloudhub, you can use the following command:
+```bash
+curl -sSL https://raw.githubusercontent.com/sansoune/cloudhub/main/scripts/quick-install.sh | bash
+```
+Alternatively, you can build from source by running the following commands:
+```bash
+git clone https://github.com/sansoune/cloudhub.git
+cd cloudhub
+go build -o cloudhub cmd/main.go
+sudo mv cloudhub /usr/local/bin/cloudhub
+```
 ## Configuration
-Cloudhub uses a configuration file to store settings. The configuration file is located at `~/.config/cloudhub/config.yaml`. You can edit this file to customize the behavior of Cloudhub.
+The configuration file is located at `~/.config/cloudhub/config.yaml`. You can edit this file to configure the stack path, daemon interval, and notification settings.
 
-The following environment variables are used by Cloudhub:
+The following flags are available:
 
-* `CLOUDHUB_CONFIG_DIR`: The directory where the configuration file is located.
-* `CLOUDHUB_STACK_DIR`: The directory where Docker Compose stacks are located.
-
-## API Endpoints
-Cloudhub does not provide any API endpoints. It is a command-line tool that interacts with the Docker API directly.
+* `--interval`: sets the daemon interval
+* `--ntfy-server`: sets the ntfy server URL
+* `--ntfy-topic`: sets the ntfy topic name
 
 ## Development Guide
-To contribute to Cloudhub, you can follow these steps:
+To contribute to the project, you can follow these steps:
 
-1. Clone the repository from GitHub.
-2. Install the dependencies by running `go get`.
-3. Build the project by running `go build`.
-4. Run the tests by running `go test`.
-5. Make changes to the code and submit a pull request.
+1. Fork the repository
+2. Clone the repository to your local machine
+3. Make changes to the code
+4. Run `go build` to build the application
+5. Run `go test` to run the tests
+6. Submit a pull request with your changes
 
 ## License
-Cloudhub is licensed under the MIT License.
+Cloudhub is licensed under the MIT license.
