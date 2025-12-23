@@ -39,7 +39,7 @@ The following features are implemented:
 ## Installation
 To install Cloudhub, you can use the following command:
 ```bash
-curl -sSL https://raw.githubusercontent.com/sansoune/cloudhub/main/scripts/quick-install.sh | bash
+curl -sSL https://raw.githubusercontent.com/sansoune/cloudhub/main/scripts/install.sh | bash
 ```
 Alternatively, you can build from source by running the following commands:
 ```bash
