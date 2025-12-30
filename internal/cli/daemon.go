@@ -212,13 +212,21 @@ func installService() {
 		return
 	}
 
-	serviceContent := `[Unit]
+	currentUser := os.Getenv("USER")
+	if currentUser == "" || currentUser == "root" {
+		fmt.Println("Don't run as root. Run as your normal user.")
+		return
+	}
+
+	serviceContent := fmt.Sprintf(`[Unit]
 Description=Cloudhub Docker Monitoring Daemon
 After=docker.service network.target
 Requires=docker.service
 
 [Service]
 Type=simple
+User=%s
+Group=%s
 ExecStart=/usr/local/bin/cloudhub daemon run
 Restart=always
 RestartSec=10
@@ -227,7 +235,7 @@ StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
-`
+`, currentUser, currentUser)
 
 	tmpFile := "/tmp/cloudhub.service"
 	if err := os.WriteFile(tmpFile, []byte(serviceContent), 0644); err != nil {
